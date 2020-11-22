@@ -1,0 +1,41 @@
+version: "3"
+
+networks:
+  traefik-proxy-network:
+    external: true
+    name: ${TRAEFIK_NETWORK}
+  backend:
+    driver: bridge
+
+services:
+  ### Vault
+  vault:
+    env_file:
+      - ".env"
+    labels:
+      # Traefik
+      - "traefik.enable=${TRAEFIK_ENABLE}"
+      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+      # HTTP
+      - "traefik.http.routers.${TRAEFIK_ROUTER_HTTP}.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${TRAEFIK_ROUTER_HTTP}.entrypoints=http"
+      - "traefik.http.routers.${TRAEFIK_ROUTER_HTTP}.service=${TRAEFIK_ROUTER_HTTP}"
+      - "traefik.http.services.${TRAEFIK_ROUTER_HTTP}.loadbalancer.server.port=${TRAEFIK_PORT}"
+      - "traefik.http.routers.${TRAEFIK_ROUTER_HTTP}.middlewares=${TRAEFIK_MIDDLEWARES}"
+      # HTTPS
+      - "traefik.http.routers.${TRAEFIK_ROUTER_HTTPS}.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${TRAEFIK_ROUTER_HTTPS}.entrypoints=https"
+      - "traefik.http.routers.${TRAEFIK_ROUTER_HTTPS}.service=${TRAEFIK_ROUTER_HTTPS}"
+      - "traefik.http.services.${TRAEFIK_ROUTER_HTTPS}.loadbalancer.server.port=${TRAEFIK_PORT}"
+      - "traefik.http.routers.${TRAEFIK_ROUTER_HTTPS}.tls=${TRAEFIK_TLS_ENABLE}"
+      - "traefik.http.routers.${TRAEFIK_ROUTER_HTTPS}.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+    networks:
+      - traefik-proxy-network
+      - backend
+    build:
+      context: ./docker/vault
+      args:
+        # This is needed for passing environment variables to the docker build contect.
+        - "VAULT_VER=${VAULT_VER}"
+        - "VAULT_IMAGE=${VAULT_IMAGE}"
+    restart: always
